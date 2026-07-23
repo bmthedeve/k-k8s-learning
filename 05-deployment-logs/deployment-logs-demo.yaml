@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: nginx-demo
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: nginx-demo
+
+  template:
+    metadata:
+      labels:
+        app: nginx-demo
+
+    spec:
+      containers:
+        - name: nginx-demo
+          image: python:3.12-slim
+
+          env:
+            - name: APP_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: APP_NAME
+
+            - name: VERSION
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: VERSION
+
+            - name: USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: USERNAME
+
+            - name: PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: PASSWORD
+
+          command:
+            - /bin/sh
+            - -c
+            - |
+                mkdir -p /app
+
+                cat <<EOF >/app/index.html
+                <html>
+                  <body>
+                    <h1>Welcome to Kubernetes!</h1>
+                    <h2>${APP_NAME}</h2>
+                    <h2>${VERSION}</h2>
+                    <h3>User : ${USERNAME}</h3>
+                  </body>
+                </html>
+                EOF
+
+                (
+                  while true
+                  do
+                    echo "--------------------------------"
+                    echo "Application Running"
+                    echo "Application : ${APP_NAME}"
+                    echo "Version     : ${VERSION}"
+                    echo "User        : ${USERNAME}"
+                    date
+                    sleep 5
+                  done
+                ) &
+
+                cd /app
+                python -m http.server 8080
+
+          ports:
+            - containerPort: 8080
