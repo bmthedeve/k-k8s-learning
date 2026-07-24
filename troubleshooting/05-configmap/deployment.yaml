@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: config-demo
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: config-demo
+  template:
+    metadata:
+      labels:
+        app: config-demo
+
+    spec:
+      containers:
+        - name: config-demo
+          image: python:3.12-slim
+          env:
+            - name: APP_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: APP_NAME
+            - name: VERSION
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: VERSION
+          command:
+            - /bin/sh
+            - -c
+            - |
+              mkdir -p /app
+              cat <<EOF >/app/index.html
+              <html>
+                <body style="font-family:Arial">
+                  <h1>${APP_NAME}</h1>
+                  <h2>${VERSION}</h2>
+                </body>
+              </html>
+              EOF
+              cd /app
+              python -m http.server 8080
+          ports:
+            - containerPort: 8080

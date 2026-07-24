@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: demo-stateful
+spec:
+  serviceName: demo-headless
+  replicas: 4
+  selector:
+    matchLabels:
+      app: demo-stateful
+  template:
+    metadata:
+      labels:
+        app: demo-stateful
+    spec:
+      containers:
+        - name: stateful-container
+          image: busybox
+          command: ["sh", "-c", "echo I am $(hostname); sleep 3600"]

@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: liveness-demo
+
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: liveness-demo
+  template:
+    metadata:
+      labels:
+        app: liveness-demo
+    spec:
+      containers:
+        - name: web
+          image: python:3.12-slim
+          command:
+            - /bin/sh
+            - -c
+            - |
+              mkdir -p /app
+
+              cat > /app/server.py <<'EOF'
+              from http.server import HTTPServer, BaseHTTPRequestHandler
+              import time
+
+              start = time.time()
+
+              class Handler(BaseHTTPRequestHandler):
+                  def do_GET(self):
+                      uptime = time.time() - start
+
+                      if self.path == "/health":
+                          # Healthy for first 30 seconds
+                          if uptime < 30:
+                              self.send_response(200)
+                              self.end_headers()
+                              self.wfile.write(b"Healthy")
+                          else:
+                              self.send_response(500)
+                              self.end_headers()
+                              self.wfile.write(b"Application Unhealthy")
+                          return
+
+                      self.send_response(200)
+                      self.end_headers()
+                      self.wfile.write(
+                          f"Application running for {int(uptime)} seconds".encode()
+                      )
+
+              HTTPServer(("0.0.0.0", 8080), Handler).serve_forever()
+              EOF
+
+              python /app/server.py
+
+          ports:
+            - containerPort: 8080
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 3
